@@ -68,7 +68,8 @@ This repository contains a Discord bot that interacts with Pavlov servers using 
 
 To ban a user, send a message in the following format in the allowed Discord channel:
 
-```Username
+```
+Username
 Date YYYY/MM/DD
 Reason```
 
