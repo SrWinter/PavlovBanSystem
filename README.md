@@ -21,17 +21,20 @@ This repository contains a Discord bot that interacts with Pavlov servers using 
 ### Installation
 
 1. Clone this repository:
+
     ```bash
     git clone https://github.com/yourusername/your-repo.git
     cd your-repo
     ```
 
 2. Install required packages:
+
     ```bash
     pip install discord.py requests pavlov-rcon
     ```
 
 3. Create a `servers.json` file with your server details:
+
     ```json
     {
       "Plap1": {
@@ -47,7 +50,13 @@ This repository contains a Discord bot that interacts with Pavlov servers using 
     }
     ```
 
-4. Replace the placeholders in `bot.py` with your actual information:
+4. Create a `ban.json` file to store ban information:
+
+    ```json
+    {}
+    ```
+
+5. Replace the placeholders in `bot.py` with your actual information:
     - `allowed_channel_id`: The ID of the Discord channel where the bot will listen for commands.
     - `github_username`: Your GitHub username.
     - `repo_name`: The name of your GitHub repository.
@@ -55,17 +64,11 @@ This repository contains a Discord bot that interacts with Pavlov servers using 
     - `access_token`: Your GitHub personal access token.
     - `bot.run('bot token')`: Your Discord bot token.
 
-### Changing bot.py
+## Banning a User
 
-- `allowed_channel_id`: Replace this value with the ID of the Discord channel where the bot should listen for commands.
-- `github_username`: Your GitHub username.
-- `repo_name`: The name of your GitHub repository.
-- `file_path`: The path to the file in your repository where ban information will be stored.
-- `access_token`: Your GitHub personal access token.
-- `bot.run('bot token')`: Replace `'bot token'` with your Discord bot token.
+To ban a user, send a message in the following format in the allowed Discord channel:
 
-### Running the Bot
+```Username
+Date YYYY/MM/DD
+Reason```
 
-Run the bot using Python:
-```bash
-python bot.py
