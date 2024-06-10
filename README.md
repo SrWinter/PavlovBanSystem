@@ -71,5 +71,6 @@ To ban a user, send a message in the following format in the allowed Discord cha
 ```
 Username
 Date YYYY/MM/DD
-Reason```
+Reason
+```
 
