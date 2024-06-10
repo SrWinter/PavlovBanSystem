@@ -1,0 +1,12 @@
+{
+  "Plap1": {
+    "ip": "ip",
+    "port": 3414,
+    "password": "password"
+  },
+  "Plap2": {
+    "ip": "ip",
+    "port": 2383,
+    "password": "password"
+  }
+}
