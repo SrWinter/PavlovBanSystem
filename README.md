@@ -82,3 +82,6 @@ You can use 2 commands we have which are:
   - `!Banlist (server_name)`: Shows all players banned on that server
   - `!players (server_name)`: Shows all players on that current server
 
+## Support
+
+If you need any help on configuring the bot player join our discord here [Support Server](https://discord.gg/2nJCse3Cnp)
