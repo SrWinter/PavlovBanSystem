@@ -55,6 +55,15 @@ This repository contains a Discord bot that interacts with Pavlov servers using 
     - `access_token`: Your GitHub personal access token.
     - `bot.run('bot token')`: Your Discord bot token.
 
+### Changing bot.py
+
+- `allowed_channel_id`: Replace this value with the ID of the Discord channel where the bot should listen for commands.
+- `github_username`: Your GitHub username.
+- `repo_name`: The name of your GitHub repository.
+- `file_path`: The path to the file in your repository where ban information will be stored.
+- `access_token`: Your GitHub personal access token.
+- `bot.run('bot token')`: Replace `'bot token'` with your Discord bot token.
+
 ### Running the Bot
 
 Run the bot using Python:
