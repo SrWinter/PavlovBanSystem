@@ -56,8 +56,8 @@ This repository contains a Discord bot that interacts with Pavlov servers using 
     {}
     ```
 
-5. Replace the placeholders in `bot.py` with your actual information:
-    - `allowed_channel_id`: The ID of the Discord channel where the bot will listen for commands.
+5. Replace the placeholders in `config.json` with your actual information:
+    - `allowed_channel_id`: The ID of the Discord channel where the bot will listen for Pavlov Bans.
     - `github_username`: Your GitHub username.
     - `repo_name`: The name of your GitHub repository.
     - `file_path`: The path to the file in your repository where ban information will be stored.
@@ -76,11 +76,7 @@ Reason
 
 # Commands
 
-You can use 2 commands we have which are:
-
-
-  - `!Banlist (server_name)`: Shows all players banned on that server
-  - `!players (server_name)`: Shows all players on that current server
+Please use /help for all the commands if you need a list!
 
 ## Support
 
