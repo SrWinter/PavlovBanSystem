@@ -30,7 +30,7 @@ This repository contains a Discord bot that interacts with Pavlov servers using 
 2. Install required packages:
 
     ```bash
-    pip install discord.py requests pavlov-rcon
+    pip install discord.py requests async-pavlov
     ```
 
 3. Create a `servers.json` file with your server details:
