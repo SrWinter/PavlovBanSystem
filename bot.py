@@ -5,7 +5,12 @@ import json
 from base64 import b64decode, b64encode
 from datetime import datetime, date
 import asyncio
-from pavlov import PavlovRCON
+from commands import setup_commands, get_server_details, send_pavlov_command  # Import necessary functions from commands.py
+from leaderboardcmd import setup_leaderboard_commands, update_player_stats  # Import leaderboard functions
+
+# Load configuration
+with open('config.json') as config_file:
+    config = json.load(config_file)
 
 # Discord bot setup
 intents = discord.Intents.default()
@@ -15,12 +20,15 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Constants
-allowed_channel_id = 124006248132309867  # channel id
-github_username = 'UserName'  # github username
-repo_name = 'RepoName'  # repo name
-file_path = 'FileName'  # file to store bans
-access_token = 'Token'  # access token
+allowed_channel_id = config["allowed_channel_id"]
+github_username = config["github_username"]
+repo_name = config["repo_name"]
+file_path = config["file_path"]
+access_token = config["access_token"]
 api_url = f'https://api.github.com/repos/{github_username}/{repo_name}/contents/{file_path}'  # DO NOT TOUCH
+bot_status = config.get("bot_status", "Online")
+bot_version = config.get("bot_version", "1.0.0")
+log_channel_id = config["log_channel_id"]
 
 # Load server details from JSON file
 with open('servers.json') as f:
@@ -45,6 +53,20 @@ async def update_github_file(api_url, content, commit_message):
     response = requests.put(update_url, headers={'Authorization': f'token {access_token}'}, json=data)
     print(response.text)
 
+async def log_to_console(message):
+    print(message)
+
+async def log_command(interaction, command_name, args):
+    log_channel = interaction.guild.get_channel(log_channel_id)
+    if log_channel:
+        embed = discord.Embed(title="Command Used", color=discord.Color.blue())
+        embed.add_field(name="User", value=interaction.user.mention, inline=True)
+        embed.add_field(name="Command", value=command_name, inline=True)
+        embed.add_field(name="Arguments", value=str(args), inline=True)
+        embed.add_field(name="Channel", value=interaction.channel.mention, inline=True)
+        embed.add_field(name="Timestamp", value=interaction.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=True)
+        await log_channel.send(embed=embed)
+
 # Check bans every minute
 @tasks.loop(minutes=1)
 async def check_bans():
@@ -55,24 +77,18 @@ async def check_bans():
 
         if 'content' in data:
             raw_content = b64decode(data['content']).decode('utf-8')
-            print("Raw Content:", raw_content)
-
             try:
                 banned_users = json.loads(raw_content)
             except json.JSONDecodeError as e:
-                print(f"Error decoding JSON content: {e}")
                 return
         else:
-            print("No 'content' field found in data:", data)
             return
     else:
-        print("Failed to retrieve data from GitHub API. Status code:", response.status_code)
         return
 
     current_date = date.today()
 
     if not banned_users:
-        print("No banned users found.")
         return
 
     users_to_unban = []
@@ -81,7 +97,7 @@ async def check_bans():
         if banned_until and current_date >= banned_until:
             # Unban the player via PavlovRCON for all servers
             for server_name in servers:
-                server_details = get_server_details(server_name)
+                server_details = get_server_details(server_name, servers)
                 if server_details:
                     unban_command = f"unban {user}"
                     await send_pavlov_command(server_details['ip'], server_details['port'], server_details['password'], unban_command)
@@ -96,20 +112,6 @@ async def check_bans():
         commit_message = f"Users unbanned as their ban time expired: {', '.join(users_to_unban)}"
         await update_github_file(api_url, banned_users, commit_message)
 
-async def send_pavlov_command(host, port, password, command):
-    try:
-        pavlov = PavlovRCON(host, port, password)
-        task = asyncio.create_task(pavlov.send(command))
-        response = await task
-        print(f"Pavlov response: {response}")
-        return response if isinstance(response, str) else json.dumps(response)
-    except Exception as e:
-        print(f"Failed to send Pavlov command: {e}")
-        return None
-
-def get_server_details(server_name):
-    return servers.get(server_name)
-
 def parse_date(date_str):
     try:
         return datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -120,14 +122,27 @@ def parse_date(date_str):
             try:
                 return datetime.strptime(date_str, '%Y/%m/%d').date()
             except ValueError:
-                print(f"Failed to parse date: {date_str}")
                 return None
 
 # Events
 @bot.event
 async def on_ready():
-    print(f'We have logged in as {bot.user.name}')
+    await log_to_console(f'{len(bot.tree.get_commands())} Commands Synced with Discord')
+    await log_to_console('Ban Manager Watching')
+    await log_to_console('Bot is Online')
+
     check_bans.start()  # Start the check_bans task when the bot is ready
+    asyncio.create_task(update_player_stats())  # Start tracking player stats
+
+    # Set bot status with version
+    await bot.change_presence(activity=discord.Game(name=f"{bot_status} v{bot_version}"))
+
+    try:
+        synced = await bot.tree.sync()
+        print(f'Successfully synced {len(synced)} commands with Discord.')
+    except Exception as e:
+        print(f'Failed to sync commands: {e}')
+        await log_to_console('Warning: Syncing commands failed. Use /debug for more information.')
 
 @bot.event
 async def on_message(message):
@@ -154,7 +169,6 @@ async def log_message_to_github(author_name, current_date, ban_reason, message_c
             raw_content = b64decode(data['content']).decode('utf-8')
             messages = json.loads(raw_content)
         except json.JSONDecodeError as e:
-            print(f"Error decoding JSON from GitHub: {e}")
             messages = {}
     else:
         messages = {}
@@ -169,90 +183,16 @@ async def log_message_to_github(author_name, current_date, ban_reason, message_c
 async def ban_user_on_all_servers(username):
     ban_command = f"ban {username}"
     for server_name, server_details in servers.items():
-        print(f"Sending ban command to {server_name}: {ban_command}")
         await send_pavlov_command(server_details['ip'], server_details['port'], server_details['password'], ban_command)
 
-# New command to get the ban list
-@bot.command(name='banlist')
-async def banlist(ctx, server_name: str):
-    server_details = get_server_details(server_name)
-    if not server_details:
-        await ctx.send(f"Server '{server_name}' not found.")
-        return
+# Setup the commands from commands.py and leaderboardcmd.py
+async def setup(bot):
+    await setup_commands(bot, servers, api_url, access_token)
+    await setup_leaderboard_commands(bot)
 
-    response = await send_pavlov_command(server_details['ip'], server_details['port'], server_details['password'], 'banlist')
-    if response:
-        try:
-            # Parse the JSON response
-            ban_data = json.loads(response)
+async def main():
+    await setup(bot)
+    await bot.start(config['discord_bot_token'])
 
-            # Extract the list of banned players
-            banned_players = ban_data.get('BanList', [])
-
-            # Create a formatted text block for the banned players
-            ban_list_text = "```"
-            ban_list_text += "\n".join(banned_players)
-            ban_list_text += "```"
-
-            await ctx.send(ban_list_text)
-        except json.JSONDecodeError:
-            await ctx.send("Failed to parse ban list response.")
-    else:
-        await ctx.send(f"Failed to retrieve ban list for {server_name}.")
-
-# New command to list players on a specific map
-@bot.command(name='players')
-async def players(ctx, server_name: str):
-    # Call the function to get the list of players on the specified map
-    player_list_response = await get_players_on_server(server_name)
-
-    print("Player list response:", player_list_response)  # Debug print
-
-    if player_list_response:
-        try:
-            # Parse the response from Pavlov server
-            player_list_data = json.loads(player_list_response)
-
-            # Extract the list of players
-            player_list = player_list_data.get('PlayerList', [])
-
-            if player_list:
-                # Calculate the number of players
-                num_players = len(player_list)
-
-                # Format the response for Discord
-                formatted_player_list = ""
-                for player in player_list:
-                    formatted_player_list += f"{player['Username']}\n"
-
-                response_message = f"Current Players on {server_name} ({num_players} out of 24):\n```{formatted_player_list}```"
-                await ctx.send(response_message)
-            else:
-                await ctx.send(f"No players currently on server '{server_name}'.")
-        except json.JSONDecodeError:
-            await ctx.send("Failed to parse player list response.")
-    else:
-        await ctx.send(f"Failed to retrieve player list for server '{server_name}'.")
-
-# Function to get the list of players on a specific server
-async def get_players_on_server(server_name):
-    # Your code to retrieve the list of players on the specified server goes here
-    # For example, you might send a command to the game server using PavlovRCON
-    players_command = f"RefreshList {server_name}"
-    server_details = get_server_details(server_name)
-    if server_details:
-        print(f"Sending player list command to {server_name}: {players_command}")
-        response = await send_pavlov_command(server_details['ip'], server_details['port'], server_details['password'], players_command)
-        return response
-    else:
-        print(f"Server '{server_name}' not found.")
-        return None
-
-    kick_command = f"kick {player_name}"
-    response = await send_pavlov_command(server_details['ip'], server_details['port'], server_details['password'], kick_command)
-    if response:
-        await ctx.send(f"Player {player_name} kicked from {server_name}.\nResponse: {response}")
-    else:
-        await ctx.send(f"Failed to kick player {player_name} from {server_name}.")
-
-bot.run('bot token')
+# Run the bot
+asyncio.run(main())
