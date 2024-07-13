@@ -1,0 +1,12 @@
+{
+  "discord_bot_token": "token",
+  "allowed_channel_id": channel_id_for_Bans,
+  "github_username": "github_username",
+  "repo_name": "repo_name",
+  "file_path": "ban_file",
+  "access_token": "github_token",
+  "required_roles": ["Admin", "Moderator"],
+  "bot_version": "1.0.0",
+  "bot_status": "Version",
+  "log_channel_id": log channel id
+}
